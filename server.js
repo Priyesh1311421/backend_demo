@@ -55,7 +55,7 @@ const authUser = async (req, res, next) => {
   }
 };
 
-app.get('/',async(req.rex)=>{
+app.get('/',async(req,res)=>{
   res.json('hello');
 });
 
