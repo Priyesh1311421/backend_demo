@@ -55,6 +55,10 @@ const authUser = async (req, res, next) => {
   }
 };
 
+app.get('/',async(req.rex)=>{
+  res.json('hello');
+});
+
 app.post('/api/register', async (req, res) => {
   try {
     const { username, password } = req.body;
