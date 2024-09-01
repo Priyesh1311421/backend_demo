@@ -12,6 +12,7 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+
 mongoose.connect('mongodb+srv://admin:Shivesh12@cluster0.2zajxvl.mongodb.net/socialcalc')
   .then(() => {  console.log('Connected to MongoDB'); }).catch((error) => { console.error('Error connecting to MongoDB:', error); });
 
@@ -51,13 +52,8 @@ const authUser = async (req, res, next) => {
     next();
   } catch (error) {
     res.status(401).json({ error: 'Not authorized to access this resource' });
-    console.log(error);
   }
 };
-
-app.get('/',async(req,res)=>{
-  res.json('hello');
-});
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -110,6 +106,53 @@ app.get('/api/user/:id', async (req, res) => {
     res.status(200).json(user);
   } catch (error) {
     res.status(500).json({ error: 'Failed to retrieve user' });
+  }
+});
+
+app.post('/api/add-collaborator', async (req, res) => {
+  const { spreadsheetId, collaboratorUsername } = req.body;
+
+  if (!spreadsheetId || !collaboratorUsername) {
+    return res.status(400).json({ error: 'Invalid request' });
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const cell = await Cell.findById(spreadsheetId).session(session);
+    if (!cell) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: 'Spreadsheet not found' });
+    }
+
+    const user = await User.findOne({ username: collaboratorUsername }).session(session);
+    if (!user) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (!cell.collaborators.includes(user._id)) {
+      cell.collaborators.push(user._id);
+    }
+
+    if (!user.spreadsheet.includes(spreadsheetId)) {
+      user.spreadsheet.push(spreadsheetId);
+    }
+
+    await cell.save({ session });
+    await user.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.status(200).json({ message: 'Collaborator added successfully' });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    res.status(500).json({ error: 'Failed to add collaborator' });
   }
 });
 
